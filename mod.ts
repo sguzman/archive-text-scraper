@@ -19,14 +19,14 @@ function library(): IUrlParse {
   return url;
 }
 
-function _page(n: number): IUrlParse {
+function page(n: number): IUrlParse {
   const url = urlParse({
     protocol: "https",
     hostname: "archive.org",
     pathname: `/details/${Deno.args[0]}`,
     query: [{
       key: "and[]",
-      value: `mediatype: "texts"`,
+      value: `mediatype:"texts"`,
     }, {
       key: "sort",
       value: "-week",
@@ -39,6 +39,7 @@ function _page(n: number): IUrlParse {
     }],
   });
 
+  log.info(`Built ${url.toString()}`);
   return url;
 }
 
@@ -50,4 +51,22 @@ const resultCount: number = parseInt(
   $("div.results_count").text().trim().split("\n").map((s) => s.trim())[0],
   10,
 );
-log.info(resultCount);
+
+log.info(`Found ${resultCount} results`);
+
+const pages: number = Math.ceil(resultCount / 75);
+log.info(`Found ${pages} pages`);
+
+for (let i = 1; i < pages; ++i) {
+  log.info(`Fetching page ${i}`);
+
+  const body: Response = await fetch(page(i).toString());
+  const text: string = await body.text();
+  const doc = cheerio.load(text);
+
+  const items = doc("[data-id]");
+  const itemArray = items.toArray();
+  for (const item of itemArray) {
+    log.info(`Found item: ${$(item).attr("data-id")}`);
+  }
+}
