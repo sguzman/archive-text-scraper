@@ -3,18 +3,27 @@ import { IUrlParse, urlParse } from "https://deno.land/x/url_parse/mod.ts";
 
 // ----------------------------------------------------------------------------
 
-import cheerio from "https://esm.sh/cheerio";
+import * as cheerio from "https://esm.sh/cheerio";
 
 // ----------------------------------------------------------------------------
 
-const lib = Deno.args[0];
-log.info(`Received library: ${lib}`);
+log.info(`Received library: ${Deno.args[0]}`);
 
-function page(n: number): IUrlParse {
+function library(): IUrlParse {
   const url = urlParse({
     protocol: "https",
     hostname: "archive.org",
-    pathname: `/details/${lib}`,
+    pathname: `/details/${Deno.args[0]}`,
+  });
+
+  return url;
+}
+
+function _page(n: number): IUrlParse {
+  const url = urlParse({
+    protocol: "https",
+    hostname: "archive.org",
+    pathname: `/details/${Deno.args[0]}`,
     query: [{
       key: "and[]",
       value: `mediatype: "texts"`,
@@ -33,3 +42,12 @@ function page(n: number): IUrlParse {
   return url;
 }
 
+const start: Response = await fetch(library().toString());
+const html: string = await start.text();
+
+const $ = cheerio.load(html);
+const resultCount: number = parseInt(
+  $("div.results_count").text().trim().split("\n").map((s) => s.trim())[0],
+  10,
+);
+log.info(resultCount);
