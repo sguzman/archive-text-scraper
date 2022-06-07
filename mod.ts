@@ -1,4 +1,4 @@
-import * as log from "https://deno.land/std@0.142.0/log/mod.ts";
+import * as log from "https://deno.land/std/log/mod.ts";
 import { IUrlParse, urlParse } from "https://deno.land/x/url_parse/mod.ts";
 
 // ----------------------------------------------------------------------------
@@ -43,12 +43,17 @@ function page(n: number): IUrlParse {
   return url;
 }
 
+async function fileExists(url: IUrlParse): Promise<boolean> {
+  
+}
+
 const start: Response = await fetch(library().toString());
 const html: string = await start.text();
 
 const $ = cheerio.load(html);
 const resultCount: number = parseInt(
-  $("div.results_count").text().trim().split("\n").map((s) => s.trim())[0],
+  $("div.results_count").text().trim().split("\n").map((s) => s.trim())[0]
+    .replace(",", ""),
   10,
 );
 
