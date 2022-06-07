@@ -43,8 +43,29 @@ function page(n: number): IUrlParse {
   return url;
 }
 
-async function fileExists(url: IUrlParse): Promise<boolean> {
-  
+async function _exists(filename: string): Promise<boolean> {
+  try {
+    await Deno.stat(filename);
+    // successful, file or directory must exist
+    return true;
+  } catch (error) {
+    // error, file or directory must not exist
+    return false;
+  }
+}
+
+async function _get(url: IUrlParse): Promise<string> {
+  const response = await fetch(url.toString());
+  const text = await response.text();
+  return text;
+}
+
+async function _save(filename: string, text: string): Promise<void> {
+  const file = await Deno.open(filename, {
+    create: true,
+    write: true,
+    truncate: true,
+  });
 }
 
 const start: Response = await fetch(library().toString());
