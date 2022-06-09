@@ -19,6 +19,16 @@ function library(): IUrlParse {
   return url;
 }
 
+function link(text: string): IUrlParse {
+  const url = urlParse({
+    protocol: "https",
+    hostname: "archive.org",
+    pathname: `/details/${text}`,
+  });
+
+  return url;
+}
+
 function page(n: number): IUrlParse {
   const url = urlParse({
     protocol: "https",
@@ -48,7 +58,7 @@ async function _exists(filename: string): Promise<boolean> {
     await Deno.stat(filename);
     // successful, file or directory must exist
     return true;
-  } catch (error) {
+  } catch (_error) {
     // error, file or directory must not exist
     return false;
   }
@@ -66,6 +76,38 @@ async function _save(filename: string, text: string): Promise<void> {
     write: true,
     truncate: true,
   });
+
+  await Deno.writeAll(file, new TextEncoder().encode(text));
+  await file.close();
+}
+
+async function readFile(filename: string): Promise<string> {
+  const file = await Deno.open(filename);
+  const text = await Deno.readAll(file);
+  await file.close();
+  return text.toString();
+}
+
+async function cache(url: IUrlParse): Promise<string> {
+  const filePath = url.pathname;
+
+  if (filePath && typeof filePath === "string") {
+    const fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+    const fullFilePath = `./data/details/${fileName}.html`;
+
+    const exists = await _exists(fullFilePath);
+
+    if (exists) {
+      return await readFile(fullFilePath);
+    } else {
+      log.info(`Fetching ${fileName}`);
+      const text = await _get(url);
+      await _save(fullFilePath, text);
+      return text;
+    }
+  }
+
+  return "";
 }
 
 const start: Response = await fetch(library().toString());
@@ -92,7 +134,13 @@ for (let i = 1; i < pages; ++i) {
 
   const items = doc("[data-id]");
   const itemArray = items.toArray();
+
   for (const item of itemArray) {
-    log.info(`Found item: ${$(item).attr("data-id")}`);
+    const u = $(item).attr("data-id");
+    if (u) {
+      const url = link(u);
+      const text = await cache(url);
+      log.info(`Cached ${url.toString()}`);
+    }
   }
 }
