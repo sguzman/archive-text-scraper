@@ -1,4 +1,4 @@
-// import * as log from "https://deno.land/std/log/mod.ts";
+import * as log from "https://deno.land/std/log/mod.ts";
 import { IUrlParse, urlParse } from "https://deno.land/x/url_parse/mod.ts";
 
 import * as cheerio from "https://esm.sh/cheerio";
@@ -90,36 +90,46 @@ export async function getCounts(url: string): Promise<YearCount[]> {
   return counts;
 }
 
-for (const obj of await getCounts(util.url.count.toString())) {
-  const year = obj.val;
-  const count = obj.n;
-  const pages = Math.ceil(count / pageSize);
+export async function perPage(year: number, i: number) {
+  const url = util.url.page(year, i);
+  const text = await fetchUrl(url);
+  const $ = cheerio.load(text);
 
-  for (let i = 1; i <= pages; i++) {
-    const url = util.url.page(year, i);
-    const text = await fetchUrl(url);
-    const $ = cheerio.load(text);
+  const items = $("div.item-ttl > a[href]");
 
-    const items = $("div.item-ttl > a[href]");
+  for (const item of items.toArray()) {
+    const loadElement = $(item);
+    const itemhref = loadElement.attr("href") as string;
+    const itemId = itemhref.split("/")[2];
 
-    for (const item of items.toArray()) {
-      const loadElement = $(item);
-      const itemhref = loadElement.attr("href") as string;
-      const itemId = itemhref.split("/")[2];
+    const itemUrl = util.url.details(itemId);
+    const itemText = await fetchUrl(itemUrl);
+    const $item = cheerio.load(itemText);
 
-      const itemUrl = util.url.details(itemId);
-      const itemText = await fetchUrl(itemUrl);
-      const $item = cheerio.load(itemText);
+    const pdf = $item('a.format-summary.download-pill[href$="pdf"]')
+      .toArray();
 
-      const pdf = $item('a.format-summary.download-pill[href$="pdf"]')
-        .toArray();
-
-      // Get second item of length is two, otherwise get first object
-      const pdfUrl = pdf.length === 2
-        ? $(pdf[1]).attr("href")
-        : $(pdf[0]).attr("href");
-      const downloadLink = pdfUrl as string;
-      console.log(`https://archive.org${downloadLink}`);
-    }
+    const pdfUrl = pdf.length === 2
+      ? $(pdf[1]).attr("href")
+      : $(pdf[0]).attr("href");
+    const downloadLink = pdfUrl as string;
+    log.info(`${year} | ${i} | ${downloadLink}`);
   }
 }
+
+export async function main(): Promise<void> {
+  for (const obj of await getCounts(util.url.count.toString())) {
+    const year = obj.val;
+    const count = obj.n;
+    const pages = Math.ceil(count / pageSize);
+
+    let promises = [];
+    for (let i = 1; i <= pages; i++) {
+      promises.push(perPage(year, i));
+    }
+
+    await Promise.all(promises);
+  }
+}
+
+await main();
