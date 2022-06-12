@@ -1,4 +1,4 @@
-import * as log from "https://deno.land/std/log/mod.ts";
+// import * as log from "https://deno.land/std/log/mod.ts";
 import { IUrlParse, urlParse } from "https://deno.land/x/url_parse/mod.ts";
 
 import * as cheerio from "https://esm.sh/cheerio";
@@ -90,14 +90,10 @@ export async function getCounts(url: string): Promise<YearCount[]> {
   return counts;
 }
 
-log.info("Starting...");
-
 for (const obj of await getCounts(util.url.count.toString())) {
   const year = obj.val;
   const count = obj.n;
   const pages = Math.ceil(count / pageSize);
-
-  log.info(`Year ${year} | count = ${count} | pages = ${pages}`);
 
   for (let i = 1; i <= pages; i++) {
     const url = util.url.page(year, i);
@@ -105,17 +101,25 @@ for (const obj of await getCounts(util.url.count.toString())) {
     const $ = cheerio.load(text);
 
     const items = $("div.item-ttl > a[href]");
-    log.info(`Year ${year} | page ${i} | items = ${items.length}`);
 
     for (const item of items.toArray()) {
       const loadElement = $(item);
       const itemhref = loadElement.attr("href") as string;
-      log.info(`Year ${year} | page ${i} | item = ${itemhref}`);
-      const itemId = itemhref.split("/")[-1];
+      const itemId = itemhref.split("/")[2];
 
       const itemUrl = util.url.details(itemId);
       const itemText = await fetchUrl(itemUrl);
       const $item = cheerio.load(itemText);
+
+      const pdf = $item('a.format-summary.download-pill[href$="pdf"]')
+        .toArray();
+
+      // Get second item of length is two, otherwise get first object
+      const pdfUrl = pdf.length === 2
+        ? $(pdf[1]).attr("href")
+        : $(pdf[0]).attr("href");
+      const downloadLink = pdfUrl as string;
+      console.log(`https://archive.org${downloadLink}`);
     }
   }
 }
