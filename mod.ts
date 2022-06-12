@@ -102,18 +102,8 @@ export async function perPage(year: number, i: number) {
     const itemhref = loadElement.attr("href") as string;
     const itemId = itemhref.split("/")[2];
 
-    const itemUrl = util.url.details(itemId);
-    const itemText = await fetchUrl(itemUrl);
-    const $item = cheerio.load(itemText);
-
-    const pdf = $item('a.format-summary.download-pill[href$="pdf"]')
-      .toArray();
-
-    const pdfUrl = pdf.length === 2
-      ? $(pdf[1]).attr("href")
-      : $(pdf[0]).attr("href");
-    const downloadLink = pdfUrl as string;
-    log.info(`${year} | ${i} | ${downloadLink}`);
+    // Write full pdf for download
+    console.log(`https://archive.org/download/${itemId}/${itemId}.pdf`);
   }
 }
 
